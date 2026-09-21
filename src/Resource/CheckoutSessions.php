@@ -1,0 +1,61 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kuti\Resource;
+
+use Kuti\CheckoutSession;
+use Kuti\CheckoutSessionCustomer;
+use Kuti\KutiClient;
+use Kuti\Money;
+use Kuti\PaymentMethodType;
+
+final class CheckoutSessions
+{
+    public function __construct(private readonly KutiClient $client)
+    {
+    }
+
+    /**
+     * Crea una sesión de cargo único. El monto SIEMPRE debe resolverse desde tu propio catálogo/base
+     * de datos server-side — nunca confíes en un monto que te mande el navegador del comprador.
+     *
+     * Pasa $idempotencyKey (ej. tu propio id de orden) para que reintentar este request de forma
+     * segura no duplique el cobro.
+     *
+     * @param PaymentMethodType[] $paymentMethodTypes
+     * @param array<string, string>|null $metadata
+     */
+    public function create(
+        Money $amount,
+        array $paymentMethodTypes,
+        ?CheckoutSessionCustomer $customer = null,
+        ?string $description = null,
+        ?string $externalReference = null,
+        ?string $successUrl = null,
+        ?string $expiresAt = null,
+        ?array $metadata = null,
+        ?string $idempotencyKey = null,
+    ): CheckoutSession {
+        $body = array_filter(
+            [
+                'amount' => $amount->toArray(),
+                'payment_method_types' => array_map(
+                    static fn (PaymentMethodType $t): string => $t->value,
+                    $paymentMethodTypes,
+                ),
+                'customer' => $customer?->toArray(),
+                'description' => $description,
+                'external_reference' => $externalReference,
+                'success_url' => $successUrl,
+                'expires_at' => $expiresAt,
+                'metadata' => $metadata,
+            ],
+            static fn (mixed $v): bool => $v !== null && $v !== [],
+        );
+
+        $response = $this->client->request('POST', '/checkout-sessions', $body, $idempotencyKey);
+
+        return CheckoutSession::fromArray($response['data']);
+    }
+}
