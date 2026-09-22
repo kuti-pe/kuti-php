@@ -25,7 +25,8 @@ $kuti = new KutiClient($_ENV['KUTI_SECRET_KEY']);
 $session = $kuti->checkoutSessions->create(
     amount: new Money('249.90', 'PEN'),
     paymentMethodTypes: [PaymentMethodType::InteroperableQr],
-    customer: new CheckoutSessionCustomer(name: 'Maria Lopez', email: 'maria@example.com'),
+    customer: new CheckoutSessionCustomer(id: 'cus_01ABC'), // existente — si viene id, se ignora el resto
+    // customer: new CheckoutSessionCustomer(name: 'María López', email: 'maria@example.com'),
     description: 'Zapatillas running talla 42',
     idempotencyKey: "order-{$orderId}", // evita duplicar el cobro si reintentas el request
 );
