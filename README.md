@@ -1,4 +1,4 @@
-# kuti.pe/kuti-php
+# kuti-pe/kuti-php
 
 SDK oficial de KUTI para PHP. Crea sesiones de checkout, consulta el estado de un pago y verifica webhooks — sin reimplementar auth, manejo de errores ni firma HMAC a mano.
 
@@ -7,7 +7,7 @@ SDK oficial de KUTI para PHP. Crea sesiones de checkout, consulta el estado de u
 ## Instalación
 
 ```bash
-composer require kuti.pe/kuti-php
+composer require kuti-pe/kuti-php
 ```
 
 ## Quickstart

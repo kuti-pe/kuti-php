@@ -1,5 +1,5 @@
 {
-  "name": "kuti.pe/kuti-php",
+  "name": "kuti-pe/kuti-php",
   "description": "SDK oficial de KUTI para PHP — crea checkout sessions, consulta pagos y verifica webhooks.",
   "type": "library",
   "license": "MIT",
