@@ -106,6 +106,7 @@ $kuti = new KutiClient($secretKey, httpClient: $miClienteGuzzlePersonalizado);
 
 - `new KutiClient(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)`
 - `$kuti->checkoutSessions->create(Money $amount, array $paymentMethodTypes, ...)`
+- `$kuti->paymentIntents->create(Money $amount, array $paymentMethodTypes, ...)`
 - `$kuti->paymentIntents->retrieve(string $id)`
 - `Webhooks::verifySignature($payload, $signatureHeader, $timestampHeader, $secret, $toleranceSeconds = 300)`
 

@@ -16,6 +16,7 @@ use Kuti\Exception\KutiRateLimitException;
 use Kuti\Exception\KutiValidationException;
 use Kuti\KutiClient;
 use Kuti\Money;
+use Kuti\PaymentIntentCustomer;
 use Kuti\PaymentMethodType;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
@@ -217,5 +218,48 @@ final class KutiClientTest extends TestCase
         /** @var RequestInterface $firstRequest */
         $firstRequest = $history[0]['request'];
         self::assertSame('order-42', $firstRequest->getHeaderLine('Idempotency-Key'));
+    }
+
+    public function testCreatePaymentIntentSendsCustomerAndIdempotencyKey(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(201, [
+                'data' => [
+                    'id' => 'pi_created',
+                    'merchant_id' => 'mer_1',
+                    'customer' => ['id' => 'cus_1'],
+                    'amount' => ['amount' => '50.00', 'currency' => 'PEN'],
+                    'status' => 'PENDING',
+                    'checkout_url' => 'https://pay.kuti.pe/c/ABC',
+                    'created_at' => '2026-01-01T00:00:00Z',
+                ],
+            ]),
+        ], $history);
+
+        $intent = $client->paymentIntents->create(
+            amount: new Money('50.00', 'PEN'),
+            paymentMethodTypes: [PaymentMethodType::InteroperableQr, PaymentMethodType::BankTransfer],
+            customer: new PaymentIntentCustomer(
+                type: 'INDIVIDUAL',
+                givenName: 'María',
+                familyName: 'López',
+                email: 'maria@example.com',
+                document: ['type' => 'DNI', 'number' => '45678912'],
+            ),
+            description: 'Pedido #1042',
+            idempotencyKey: 'order-1042',
+        );
+
+        self::assertSame('pi_created', $intent->id);
+        self::assertSame('cus_1', $intent->customerId);
+        self::assertCount(1, $history);
+        /** @var RequestInterface $request */
+        $request = $history[0]['request'];
+        self::assertSame('https://example.test/v1/payment-intents', (string) $request->getUri());
+        self::assertSame('order-1042', $request->getHeaderLine('Idempotency-Key'));
+        $body = json_decode((string) $request->getBody(), true);
+        self::assertSame('María', $body['customer']['given_name']);
+        self::assertSame(['type' => 'DNI', 'number' => '45678912'], $body['customer']['document']);
     }
 }
