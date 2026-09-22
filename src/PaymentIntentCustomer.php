@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kuti;
 
-/** Cliente del cobro. Si viene `$id`, se ignora el resto. */
+/** Customer payload for create. If $id is set, other fields are ignored. */
 final class PaymentIntentCustomer
 {
     /**

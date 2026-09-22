@@ -17,11 +17,7 @@ final class CheckoutSessions
     }
 
     /**
-     * Crea una sesión de cargo único. El monto SIEMPRE debe resolverse desde tu propio catálogo/base
-     * de datos server-side — nunca confíes en un monto que te mande el navegador del comprador.
-     *
-     * Pasa $idempotencyKey (ej. tu propio id de orden) para que reintentar este request de forma
-     * segura no duplique el cobro.
+     * POST /checkout-sessions. Pass $idempotencyKey to safely retry.
      *
      * @param PaymentMethodType[] $paymentMethodTypes
      * @param array<string, string>|null $metadata

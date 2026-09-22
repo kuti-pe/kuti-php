@@ -58,10 +58,10 @@ final class KutiClient
 
     /**
      * @internal usado por los recursos — no lo llames directo.
-     * @param array<string, mixed>|null $body
+     * @param array<string, mixed>|\stdClass|null $body
      * @return array<string, mixed>
      */
-    public function request(string $method, string $path, ?array $body = null, ?string $idempotencyKey = null): array
+    public function request(string $method, string $path, array|\stdClass|null $body = null, ?string $idempotencyKey = null): array
     {
         $headers = [
             'Authorization' => 'Bearer ' . $this->secretKey,

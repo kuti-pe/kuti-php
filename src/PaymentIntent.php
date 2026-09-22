@@ -72,7 +72,7 @@ final class PaymentIntent
         );
     }
 
-    /** Verdad de si el pago ya se completó — úsalo antes de entregar un producto o servicio. */
+    /** True when status is SUCCEEDED. */
     public function isPaid(): bool
     {
         return $this->status === PaymentIntentStatus::Succeeded;

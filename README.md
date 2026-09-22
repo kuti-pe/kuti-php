@@ -20,30 +20,25 @@ use Kuti\CheckoutSessionCustomer;
 
 $kuti = new KutiClient($_ENV['KUTI_SECRET_KEY']);
 
-// El monto SIEMPRE se resuelve en tu backend — nunca confíes en un monto
-// que te mande el navegador del comprador.
 $session = $kuti->checkoutSessions->create(
     amount: new Money('249.90', 'PEN'),
     paymentMethodTypes: [PaymentMethodType::InteroperableQr],
-    customer: new CheckoutSessionCustomer(id: 'cus_01ABC'), // existente — si viene id, se ignora el resto
+    customer: new CheckoutSessionCustomer(id: 'cus_01ABC'),
     // customer: new CheckoutSessionCustomer(name: 'María López', email: 'maria@example.com'),
     description: 'Zapatillas running talla 42',
-    idempotencyKey: "order-{$orderId}", // evita duplicar el cobro si reintentas el request
+    idempotencyKey: "order-{$orderId}",
 );
 
-// Envía $session->checkoutUrl al frontend y ábrelo con KUTI.js:
-//   window.Kuti.open({ checkoutUrl: "...", onSuccess, onFailure });
+// window.Kuti.open({ checkoutUrl: $session->checkoutUrl, onSuccess, onFailure })
 echo json_encode(['checkoutUrl' => $session->checkoutUrl]);
 ```
 
-## Confirmar un pago (sin necesitar webhooks)
-
-`onSuccess` de KUTI.js corre en el navegador del comprador — no es confiable por sí solo. Vuelve a preguntarle a la API:
+## Confirmar un pago
 
 ```php
 $intent = $kuti->paymentIntents->retrieve($paymentIntentId);
 if ($intent->isPaid()) {
-    // entrega el producto / activa el servicio
+    // fulfill order
 }
 ```
 
@@ -105,9 +100,13 @@ $kuti = new KutiClient($secretKey, httpClient: $miClienteGuzzlePersonalizado);
 ## API
 
 - `new KutiClient(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)`
-- `$kuti->checkoutSessions->create(Money $amount, array $paymentMethodTypes, ...)`
-- `$kuti->paymentIntents->create(Money $amount, array $paymentMethodTypes, ...)`
+- `$kuti->checkoutSessions->create(...)` — Checkout.js
+- `$kuti->paymentIntents->create(...)` — cobro directo
+- `$kuti->paymentIntents->list(...)`
 - `$kuti->paymentIntents->retrieve(string $id)`
+- `$kuti->paymentIntents->cancel(string $id)`
+- `$kuti->paymentIntents->sendWhatsApp(...)`
+- `Webhooks::verifySignature(...)`
 - `Webhooks::verifySignature($payload, $signatureHeader, $timestampHeader, $secret, $toleranceSeconds = 300)`
 
 ## Tests

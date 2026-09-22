@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Kuti;
 
-/** Decimal como string — nunca float, para no perder precisión con dinero. */
+/** Decimal string — never float. Currency: PEN only for now. */
 final class Money
 {
     public function __construct(
         public readonly string $amount,
-        public readonly string $currency,
+        public readonly string $currency = 'PEN',
     ) {
     }
 
