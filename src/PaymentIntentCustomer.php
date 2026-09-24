@@ -4,55 +4,7 @@ declare(strict_types=1);
 
 namespace Kuti;
 
-/** Customer payload for create. If $id is set, other fields are ignored. */
-final class PaymentIntentCustomer
+/** Customer of a payment intent. If $id is set, other fields are ignored (except customFields). */
+final class PaymentIntentCustomer extends CustomerInput
 {
-    /**
-     * @param array{type?: string, number?: string}|null $document
-     */
-    public function __construct(
-        public readonly ?string $id = null,
-        public readonly ?string $type = null,
-        public readonly ?string $givenName = null,
-        public readonly ?string $familyName = null,
-        public readonly ?string $legalName = null,
-        public readonly ?string $email = null,
-        public readonly ?string $phone = null,
-        public readonly ?string $externalId = null,
-        public readonly ?array $document = null,
-    ) {
-    }
-
-    /** @return array<string, mixed> */
-    public function toArray(): array
-    {
-        $out = array_filter(
-            [
-                'id' => $this->id,
-                'type' => $this->type,
-                'given_name' => $this->givenName,
-                'family_name' => $this->familyName,
-                'legal_name' => $this->legalName,
-                'email' => $this->email,
-                'phone' => $this->phone,
-                'external_id' => $this->externalId,
-            ],
-            static fn (mixed $v): bool => $v !== null && $v !== '',
-        );
-
-        if ($this->document !== null) {
-            $doc = array_filter(
-                [
-                    'type' => $this->document['type'] ?? null,
-                    'number' => $this->document['number'] ?? null,
-                ],
-                static fn (mixed $v): bool => $v !== null && $v !== '',
-            );
-            if ($doc !== []) {
-                $out['document'] = $doc;
-            }
-        }
-
-        return $out;
-    }
 }

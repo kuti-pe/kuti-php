@@ -26,6 +26,13 @@ final class PaymentIntent
         public readonly ?string $checkoutUrl = null,
         public readonly ?string $expiresAt = null,
         public readonly ?array $paidWith = null,
+        /**
+         * Customer frozen on the payment intent: id, type, first_name, last_name, company_name,
+         * name, document {type, number, country}, email, custom_fields.
+         *
+         * @var array<string, mixed>|null
+         */
+        public readonly ?array $customer = null,
     ) {
     }
 
@@ -69,6 +76,7 @@ final class PaymentIntent
             checkoutUrl: $data['checkout_url'] ?? null,
             expiresAt: $data['expires_at'] ?? null,
             paidWith: $paidWith,
+            customer: isset($data['customer']) && is_array($data['customer']) ? $data['customer'] : null,
         );
     }
 

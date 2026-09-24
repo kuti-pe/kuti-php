@@ -12,10 +12,11 @@ use GuzzleHttp\Exception\RequestException;
 use Kuti\Exception\KutiApiException;
 use Kuti\Exception\KutiConnectionException;
 use Kuti\Resource\CheckoutSessions;
+use Kuti\Resource\Customers;
 use Kuti\Resource\PaymentIntents;
 
 /**
- * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, paymentIntents);
+ * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents);
  * esta clase solo resuelve auth, reintentos y mapeo de errores — cada recurso solo arma su propio
  * path/body.
  */
@@ -31,6 +32,7 @@ final class KutiClient
     private readonly string $baseUrl;
 
     public readonly CheckoutSessions $checkoutSessions;
+    public readonly Customers $customers;
     public readonly PaymentIntents $paymentIntents;
 
     public function __construct(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)
@@ -53,6 +55,7 @@ final class KutiClient
         $this->http = $httpClient ?? new GuzzleClient();
 
         $this->checkoutSessions = new CheckoutSessions($this);
+        $this->customers = new Customers($this);
         $this->paymentIntents = new PaymentIntents($this);
     }
 

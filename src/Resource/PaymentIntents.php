@@ -7,7 +7,7 @@ namespace Kuti\Resource;
 use Kuti\KutiClient;
 use Kuti\Money;
 use Kuti\PaymentIntent;
-use Kuti\PaymentIntentCustomer;
+use Kuti\CustomerInput;
 use Kuti\PaymentMethodType;
 
 final class PaymentIntents
@@ -25,7 +25,7 @@ final class PaymentIntents
     public function create(
         Money $amount,
         array $paymentMethodTypes,
-        ?PaymentIntentCustomer $customer = null,
+        ?CustomerInput $customer = null,
         ?string $receivableId = null,
         ?string $categoryId = null,
         ?bool $requiresCustomerInfo = null,

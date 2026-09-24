@@ -24,13 +24,46 @@ $session = $kuti->checkoutSessions->create(
     amount: new Money('249.90', 'PEN'),
     paymentMethodTypes: [PaymentMethodType::InteroperableQr],
     customer: new CheckoutSessionCustomer(id: 'cus_01ABC'),
-    // customer: new CheckoutSessionCustomer(name: 'María López', email: 'maria@example.com'),
+    // customer: new CheckoutSessionCustomer(firstName: 'María', lastName: 'López', email: 'maria@example.com'),
     description: 'Zapatillas running talla 42',
     idempotencyKey: "order-{$orderId}",
 );
 
 // window.Kuti.open({ checkoutUrl: $session->checkoutUrl, onSuccess, onFailure })
 echo json_encode(['checkoutUrl' => $session->checkoutUrl]);
+```
+
+
+## Clientes y campos personalizados
+
+El cliente tiene la **misma forma** en `customers->create`, en el `customer` de un cobro y en el de
+una checkout session. `customFields` son los campos que el negocio definió en
+**Ajustes → Clientes → Campos** (la key de cada campo):
+
+```php
+use Kuti\CustomerInput;
+use Kuti\PaymentIntentCustomer;
+
+$customer = $kuti->customers->create(new CustomerInput(
+    type: 'INDIVIDUAL',
+    firstName: 'María',
+    lastName: 'López',
+    document: ['type' => 'DNI', 'number' => '45678912'], // type opcional: se deduce del número
+    email: 'maria@example.com',
+    customFields: ['grade' => 'quinto', 'student_code' => '2026-00781'],
+));
+
+// En un cobro: se reutiliza el cliente por id → externalId → documento, o se crea.
+$kuti->paymentIntents->create(
+    amount: new Money('250.00', 'PEN'),
+    paymentMethodTypes: [PaymentMethodType::InteroperableQr],
+    customer: new PaymentIntentCustomer(document: ['number' => '45678912'], customFields: ['grade' => 'sexto']),
+    description: 'Pensión marzo',
+    idempotencyKey: 'pension-2026-03-45678912',
+);
+
+// Editar: solo cambian las keys enviadas; null borra el valor.
+$kuti->customers->update($customer->id, ['customFields' => ['birth_date' => null]]);
 ```
 
 ## Confirmar un pago
@@ -100,6 +133,7 @@ $kuti = new KutiClient($secretKey, httpClient: $miClienteGuzzlePersonalizado);
 ## API
 
 - `new KutiClient(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)`
+- `$kuti->customers->create(CustomerInput $customer, ?array $metadata)` / `retrieve($id)` / `update($id, array $params)` / `list(array $params)` / `delete($id)`
 - `$kuti->checkoutSessions->create(...)` — Checkout.js
 - `$kuti->paymentIntents->create(...)` — cobro directo
 - `$kuti->paymentIntents->list(...)`

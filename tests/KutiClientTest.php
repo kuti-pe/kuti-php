@@ -10,6 +10,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Kuti\CheckoutSessionCustomer;
+use Kuti\CustomerInput;
 use Kuti\Exception\KutiAuthenticationException;
 use Kuti\Exception\KutiNotFoundException;
 use Kuti\Exception\KutiRateLimitException;
@@ -209,7 +210,7 @@ final class KutiClientTest extends TestCase
         $session = $client->checkoutSessions->create(
             new Money('10.00', 'PEN'),
             [PaymentMethodType::InteroperableQr],
-            new CheckoutSessionCustomer(name: 'Maria Lopez'),
+            new CheckoutSessionCustomer(firstName: 'Maria', lastName: 'Lopez'),
             idempotencyKey: 'order-42',
         );
 
@@ -242,8 +243,8 @@ final class KutiClientTest extends TestCase
             paymentMethodTypes: [PaymentMethodType::InteroperableQr, PaymentMethodType::BankTransfer],
             customer: new PaymentIntentCustomer(
                 type: 'INDIVIDUAL',
-                givenName: 'María',
-                familyName: 'López',
+                firstName: 'María',
+                lastName: 'López',
                 email: 'maria@example.com',
                 document: ['type' => 'DNI', 'number' => '45678912'],
             ),
@@ -259,7 +260,67 @@ final class KutiClientTest extends TestCase
         self::assertSame('https://example.test/v1/payment-intents', (string) $request->getUri());
         self::assertSame('order-1042', $request->getHeaderLine('Idempotency-Key'));
         $body = json_decode((string) $request->getBody(), true);
-        self::assertSame('María', $body['customer']['given_name']);
+        self::assertSame('María', $body['customer']['first_name']);
         self::assertSame(['type' => 'DNI', 'number' => '45678912'], $body['customer']['document']);
+    }
+
+    public function testCreateCustomerWithDocumentAndCustomFields(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(201, [
+                'data' => [
+                    'id' => 'cus_new',
+                    'merchant_id' => 'mer_1',
+                    'type' => 'INDIVIDUAL',
+                    'first_name' => 'María',
+                    'document' => ['type' => 'DNI', 'number' => '45678912', 'country' => 'PE'],
+                    'custom_fields' => ['grade' => 'quinto'],
+                    'created_at' => '2026-01-01T00:00:00Z',
+                ],
+            ]),
+        ], $history);
+
+        $customer = $client->customers->create(new CustomerInput(
+            type: 'INDIVIDUAL',
+            firstName: 'María',
+            lastName: 'López',
+            document: ['number' => '45678912'],
+            customFields: ['grade' => '5to grado'],
+        ));
+
+        self::assertSame('cus_new', $customer->id);
+        self::assertSame(['grade' => 'quinto'], $customer->customFields);
+        self::assertSame('45678912', $customer->document['number']);
+        /** @var RequestInterface $request */
+        $request = $history[0]['request'];
+        self::assertSame('https://example.test/v1/customers', (string) $request->getUri());
+        $body = json_decode((string) $request->getBody(), true);
+        self::assertSame(['number' => '45678912'], $body['document']);
+        self::assertSame(['grade' => '5to grado'], $body['custom_fields']);
+    }
+
+    public function testUpdateCustomerSendsNullToRemoveACustomField(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(200, [
+                'data' => [
+                    'id' => 'cus_1',
+                    'merchant_id' => 'mer_1',
+                    'type' => 'INDIVIDUAL',
+                    'custom_fields' => ['grade' => 'sexto'],
+                    'created_at' => '2026-01-01T00:00:00Z',
+                ],
+            ]),
+        ], $history);
+
+        $client->customers->update('cus_1', ['customFields' => ['grade' => 'sexto', 'birth_date' => null]]);
+
+        /** @var RequestInterface $request */
+        $request = $history[0]['request'];
+        self::assertSame('PATCH', $request->getMethod());
+        $body = json_decode((string) $request->getBody(), true);
+        self::assertSame(['grade' => 'sexto', 'birth_date' => null], $body['custom_fields']);
     }
 }

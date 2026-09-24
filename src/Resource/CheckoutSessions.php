@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kuti\Resource;
 
 use Kuti\CheckoutSession;
-use Kuti\CheckoutSessionCustomer;
+use Kuti\CustomerInput;
 use Kuti\KutiClient;
 use Kuti\Money;
 use Kuti\PaymentMethodType;
@@ -25,7 +25,7 @@ final class CheckoutSessions
     public function create(
         Money $amount,
         array $paymentMethodTypes,
-        ?CheckoutSessionCustomer $customer = null,
+        ?CustomerInput $customer = null,
         ?string $description = null,
         ?string $externalReference = null,
         ?string $successUrl = null,
