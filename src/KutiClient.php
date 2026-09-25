@@ -14,9 +14,10 @@ use Kuti\Exception\KutiConnectionException;
 use Kuti\Resource\CheckoutSessions;
 use Kuti\Resource\Customers;
 use Kuti\Resource\PaymentIntents;
+use Kuti\Resource\PaymentLinks;
 
 /**
- * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents);
+ * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents, paymentLinks);
  * esta clase solo resuelve auth, reintentos y mapeo de errores — cada recurso solo arma su propio
  * path/body.
  */
@@ -34,6 +35,7 @@ final class KutiClient
     public readonly CheckoutSessions $checkoutSessions;
     public readonly Customers $customers;
     public readonly PaymentIntents $paymentIntents;
+    public readonly PaymentLinks $paymentLinks;
 
     public function __construct(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)
     {
@@ -57,6 +59,7 @@ final class KutiClient
         $this->checkoutSessions = new CheckoutSessions($this);
         $this->customers = new Customers($this);
         $this->paymentIntents = new PaymentIntents($this);
+        $this->paymentLinks = new PaymentLinks($this);
     }
 
     /**

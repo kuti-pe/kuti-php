@@ -21,6 +21,8 @@ final class PaymentIntents
      *
      * @param PaymentMethodType[] $paymentMethodTypes
      * @param array<string, string>|null $metadata
+     * @param list<string>|null $sendVia Por dónde se envía el cobro: 'EMAIL', 'WHATSAPP'. null = ['EMAIL'];
+     *     [] = no enviar. WHATSAPP necesita teléfono del cliente (usa 1 moneda).
      */
     public function create(
         Money $amount,
@@ -35,6 +37,7 @@ final class PaymentIntents
         ?string $merchantId = null,
         ?array $metadata = null,
         ?string $idempotencyKey = null,
+        ?array $sendVia = null,
     ): PaymentIntent {
         $body = array_filter(
             [
@@ -55,6 +58,10 @@ final class PaymentIntents
             ],
             static fn (mixed $v): bool => $v !== null && $v !== [],
         );
+        // Fuera del filtro: [] es válido ("no enviar nada").
+        if ($sendVia !== null) {
+            $body['send_via'] = array_values($sendVia);
+        }
 
         $response = $this->client->request('POST', '/payment-intents', $body, $idempotencyKey);
 
@@ -68,6 +75,8 @@ final class PaymentIntents
      *   status?: string,
      *   q?: string,
      *   customerId?: string,
+     *   source?: string,
+     *   paymentLinkId?: string,
      *   createdFrom?: string,
      *   createdTo?: string,
      *   page?: int,
@@ -86,6 +95,12 @@ final class PaymentIntents
         }
         if (isset($params['customerId'])) {
             $query['customer_id'] = $params['customerId'];
+        }
+        if (isset($params['source'])) {
+            $query['source'] = $params['source'];
+        }
+        if (isset($params['paymentLinkId'])) {
+            $query['payment_link_id'] = $params['paymentLinkId'];
         }
         if (isset($params['createdFrom'])) {
             $query['created_from'] = $params['createdFrom'];

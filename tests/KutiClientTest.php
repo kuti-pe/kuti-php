@@ -323,4 +323,82 @@ final class KutiClientTest extends TestCase
         $body = json_decode((string) $request->getBody(), true);
         self::assertSame(['grade' => 'sexto', 'birth_date' => null], $body['custom_fields']);
     }
+
+    public function testCreatesAPaymentLinkAndSendsEmptyQuestionList(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(201, [
+                'data' => [
+                    'id' => 'plink_1',
+                    'merchant_id' => 'mer_1',
+                    'livemode' => false,
+                    'slug' => 'donacion',
+                    'url' => 'https://pay.kuti.pe/l/donacion',
+                    'title' => 'Donación',
+                    'template' => 'DONATION',
+                    'pricing' => 'CUSTOMER_CHOOSES',
+                    'currency' => 'PEN',
+                    'min_amount' => '5.00',
+                    'suggested_amounts' => ['20.00', '50.00'],
+                    'payment_method_types' => ['INTEROPERABLE_QR'],
+                    'status' => 'ACTIVE',
+                    'views_count' => 0,
+                    'created_at' => '2026-01-01T00:00:00Z',
+                    'updated_at' => '2026-01-01T00:00:00Z',
+                ],
+            ]),
+        ], $history);
+
+        $link = $client->paymentLinks->create([
+            'title' => 'Donación',
+            'template' => 'DONATION',
+            'pricing' => 'CUSTOMER_CHOOSES',
+            'minAmount' => '5.00',
+            'suggestedAmounts' => ['20.00', '50.00'],
+            'paymentMethodTypes' => ['INTEROPERABLE_QR'],
+            'customerFieldIds' => [],
+        ]);
+
+        $request = $history[0]['request'];
+        $this->assertSame('POST', $request->getMethod());
+        $this->assertSame('/v1/payment-links', $request->getUri()->getPath());
+        $body = json_decode((string) $request->getBody(), true);
+        $this->assertSame([], $body['customer_field_ids']);
+        $this->assertSame('5.00', $body['min_amount']);
+        $this->assertSame('https://pay.kuti.pe/l/donacion', $link->url);
+        $this->assertTrue($link->isActive());
+    }
+
+    public function testFiltersIntentsBySourceAndSendsSendVia(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(200, ['data' => [], 'pagination' => ['page' => 1, 'per_page' => 25, 'total' => 0, 'total_pages' => 0]]),
+            self::jsonResponse(201, [
+                'data' => [
+                    'id' => 'pi_1',
+                    'merchant_id' => 'mer_1',
+                    'amount' => ['amount' => '10.00', 'currency' => 'PEN'],
+                    'status' => 'PENDING',
+                    'send_via' => [],
+                    'created_at' => '2026-01-01T00:00:00Z',
+                ],
+            ]),
+        ], $history);
+
+        $client->paymentIntents->list(['source' => 'link', 'paymentLinkId' => 'plink_1']);
+        parse_str($history[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame('link', $query['source']);
+        $this->assertSame('plink_1', $query['payment_link_id']);
+
+        $intent = $client->paymentIntents->create(
+            new Money('10.00', 'PEN'),
+            [PaymentMethodType::InteroperableQr],
+            sendVia: [],
+        );
+        $body = json_decode((string) $history[1]['request']->getBody(), true);
+        $this->assertSame([], $body['send_via']);
+        $this->assertSame([], $intent->sendVia);
+    }
 }

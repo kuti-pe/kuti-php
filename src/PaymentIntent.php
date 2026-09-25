@@ -33,6 +33,14 @@ final class PaymentIntent
          * @var array<string, mixed>|null
          */
         public readonly ?array $customer = null,
+        /** Link de pago del que salió este cobro (plink_…), si aplica. */
+        public readonly ?string $paymentLinkId = null,
+        /**
+         * Canales por los que se envió el cobro al crearlo (EMAIL, WHATSAPP).
+         *
+         * @var list<string>|null
+         */
+        public readonly ?array $sendVia = null,
     ) {
     }
 
@@ -77,6 +85,8 @@ final class PaymentIntent
             expiresAt: $data['expires_at'] ?? null,
             paidWith: $paidWith,
             customer: isset($data['customer']) && is_array($data['customer']) ? $data['customer'] : null,
+            paymentLinkId: $data['payment_link_id'] ?? null,
+            sendVia: $data['send_via'] ?? null,
         );
     }
 

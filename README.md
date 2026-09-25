@@ -130,17 +130,53 @@ Por defecto se usa Guzzle. Si ya tienes tu propio cliente configurado (proxy, lo
 $kuti = new KutiClient($secretKey, httpClient: $miClienteGuzzlePersonalizado);
 ```
 
+
+## Links de pago
+
+Un enlace permanente que pagan muchas personas (curso, entrada, donación). Cada pago es un cobro
+normal con `paymentLinkId`.
+
+```php
+$link = $kuti->paymentLinks->create([
+    'title' => 'Taller de Excel — sábado 10am',
+    'template' => 'COURSE',
+    'pricing' => 'FIXED',
+    'amount' => '120.00',
+    'paymentMethodTypes' => ['INTEROPERABLE_QR', 'BANK_TRANSFER'],
+    'customerFieldIds' => ['cfd_…'],     // [] = solo nombre, apellido y correo
+    'buttonLabel' => 'Inscribirme',
+    'successMessage' => '¡Listo! Te esperamos el sábado.',
+    'successButtonLabel' => 'Unirme al grupo',
+    'successButtonUrl' => 'https://chat.whatsapp.com/…',
+]);
+echo $link->url; // https://pay.kuti.pe/l/taller-de-excel
+
+// Quienes pagaron el link
+$paid = $kuti->paymentIntents->list(['paymentLinkId' => $link->id, 'status' => 'SUCCEEDED', 'perPage' => 'all']);
+```
+
+## Enviar el cobro al crearlo
+
+```php
+$kuti->paymentIntents->create(
+    new Money('250.00', 'PEN'),
+    [PaymentMethodType::InteroperableQr],
+    customer: new CustomerInput(id: 'cus_…'),
+    sendVia: ['EMAIL', 'WHATSAPP'], // null = ['EMAIL']; [] = no enviar
+);
+```
+
 ## API
 
 - `new KutiClient(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)`
 - `$kuti->customers->create(CustomerInput $customer, ?array $metadata)` / `retrieve($id)` / `update($id, array $params)` / `list(array $params)` / `delete($id)`
 - `$kuti->checkoutSessions->create(...)` — Checkout.js
 - `$kuti->paymentIntents->create(...)` — cobro directo
-- `$kuti->paymentIntents->list(...)`
+- `$kuti->paymentIntents->list(...)` — filtros `status`, `q`, `customerId`, `source` (single | link | recurring), `paymentLinkId`
 - `$kuti->paymentIntents->retrieve(string $id)`
 - `$kuti->paymentIntents->cancel(string $id)`
 - `$kuti->paymentIntents->sendWhatsApp(...)`
-- `Webhooks::verifySignature(...)`
+- `$kuti->paymentLinks->create(array $params)` / `retrieve($id)` / `update($id, array $params)` / `list(array $params)` / `activate($id)` / `deactivate($id)` / `checkSlug($slug, $exceptId)`
 - `Webhooks::verifySignature($payload, $signatureHeader, $timestampHeader, $secret, $toleranceSeconds = 300)`
 
 ## Tests
