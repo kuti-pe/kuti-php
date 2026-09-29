@@ -102,11 +102,12 @@ http_response_code(200);
 
 ## Manejo de errores
 
-Todas las excepciones de la API extienden `KutiApiException` (`getStatus()`, `getKutiCode()`, `getRequestId()`, `getDocUrl()`, `getDetails()`). Hay subclases para los casos más comunes:
+Todas las excepciones de la API extienden `KutiApiException` (`getStatus()`, `getKutiCode()`, `getRequestId()`, `getCorrelationId()`, `getDocUrl()`, `getDetails()`). Hay subclases para los casos más comunes:
 
 ```php
 use Kuti\Exception\KutiValidationException;
 use Kuti\Exception\KutiNotFoundException;
+use Kuti\Exception\KutiPermissionException;
 use Kuti\Exception\KutiApiException;
 
 try {
@@ -115,8 +116,15 @@ try {
     // $e->getDetails() => [['field' => 'amount.amount', 'code' => 'MUST_BE_POSITIVE', ...]]
 } catch (KutiNotFoundException $e) {
     // ...
+} catch (KutiPermissionException $e) {
+    if ($e->isInsufficientScope()) {
+        // a la API key le falta el permiso de este endpoint (edítala en el panel o usa otra)
+    } elseif ($e->isDashboardOnly()) {
+        // endpoint solo del panel de KUTI (p. ej. cambiar la cuenta bancaria): ninguna key puede usarlo
+    }
 } catch (KutiApiException $e) {
     error_log("{$e->getKutiCode()} request_id={$e->getRequestId()}"); // para reportar a soporte
+    $diagnosis = $kuti->diagnostics->getRequest($e->getRequestId()); // qué pasó con esa llamada
 }
 ```
 
@@ -177,6 +185,9 @@ $kuti->paymentIntents->create(
 - `$kuti->paymentIntents->cancel(string $id)`
 - `$kuti->paymentIntents->sendWhatsApp(...)`
 - `$kuti->paymentLinks->create(array $params)` / `retrieve($id)` / `update($id, array $params)` / `list(array $params)` / `activate($id)` / `deactivate($id)` / `checkSlug($slug, $exceptId)`
+- `$kuti->paymentExceptions->list(array $params)` / `resolve($id, $status, $note)` — pagos para revisar
+- `$kuti->webhookDeliveries->retrieve($id)` / `retry($id)` — cada intento con el status HTTP y lo que respondió tu servidor
+- `$kuti->diagnostics->getRequest($requestId)` / `listByCorrelationId($id)` / `tracePaymentIntent($id)` — permiso `diagnostics:read`
 - `Webhooks::verifySignature($payload, $signatureHeader, $timestampHeader, $secret, $toleranceSeconds = 300)`
 
 ## Tests

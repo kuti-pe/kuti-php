@@ -19,6 +19,7 @@ use Kuti\KutiClient;
 use Kuti\Money;
 use Kuti\PaymentIntentCustomer;
 use Kuti\PaymentMethodType;
+use Kuti\Exception\KutiPermissionException;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 
@@ -400,5 +401,78 @@ final class KutiClientTest extends TestCase
         $body = json_decode((string) $history[1]['request']->getBody(), true);
         $this->assertSame([], $body['send_via']);
         $this->assertSame([], $intent->sendVia);
+    }
+
+    public function testA403ExposesTheKindOfPermissionProblemAndTheCorrelationId(): void
+    {
+        $client = $this->makeClient([
+            self::jsonResponse(403, [
+                'success' => false,
+                'message' => 'Sin permiso',
+                'error' => [
+                    'code' => 'API_KEY_NOT_ALLOWED',
+                    'message' => 'Este endpoint es solo del panel de KUTI.',
+                    'request_id' => 'req_1',
+                    'correlation_id' => 'pedido-1042',
+                ],
+            ]),
+        ]);
+
+        try {
+            $client->paymentIntents->retrieve('pi_1');
+            self::fail('Expected KutiPermissionException');
+        } catch (KutiPermissionException $e) {
+            self::assertTrue($e->isDashboardOnly());
+            self::assertFalse($e->isInsufficientScope());
+            self::assertSame('req_1', $e->getRequestId());
+            self::assertSame('pedido-1042', $e->getCorrelationId());
+        }
+    }
+
+    public function testListsAndResolvesPaymentExceptions(): void
+    {
+        $row = [
+            'id' => 'pexc_1', 'merchant_id' => 'mer_1', 'livemode' => false, 'payment_intent_id' => 'pi_1',
+            'payment_method_type' => 'BANK_TRANSFER', 'amount' => ['amount' => '250.00', 'currency' => 'PEN'],
+            'reason' => 'DUPLICATE', 'status' => 'OPEN', 'created_at' => '2026-09-29T15:20:00Z',
+        ];
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(200, ['data' => [$row], 'pagination' => ['page' => 1, 'total' => 1]]),
+            self::jsonResponse(200, ['data' => array_merge($row, ['status' => 'REFUNDED', 'resolution_note' => 'Devuelto'])]),
+        ], $history);
+
+        $list = $client->paymentExceptions->list(['status' => 'OPEN', 'paymentIntentId' => 'pi_1']);
+        $resolved = $client->paymentExceptions->resolve('pexc_1', 'REFUNDED', 'Devuelto');
+
+        self::assertSame('/v1/payment-exceptions', $history[0]['request']->getUri()->getPath());
+        self::assertSame('status=OPEN&payment_intent_id=pi_1', $history[0]['request']->getUri()->getQuery());
+        self::assertSame('DUPLICATE', $list['data'][0]->reason);
+        self::assertSame('250.00', $list['data'][0]->amount->amount);
+        self::assertSame(['status' => 'REFUNDED', 'note' => 'Devuelto'], json_decode((string) $history[1]['request']->getBody(), true));
+        self::assertSame('REFUNDED', $resolved->status);
+        self::assertSame('Devuelto', $resolved->resolutionNote);
+    }
+
+    public function testDiagnosticsAndCustomerCode(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(200, ['data' => ['request' => ['id' => 'req_1', 'status' => 201], 'events' => []]]),
+            self::jsonResponse(200, ['data' => ['payment_intent_id' => 'pi_1', 'timeline' => []]]),
+            self::jsonResponse(200, ['data' => [
+                'id' => 'cus_1', 'merchant_id' => 'mer_1', 'code' => 'ZIZE00001', 'type' => 'INDIVIDUAL',
+                'created_at' => '2026-01-01T00:00:00Z',
+            ]]),
+        ], $history);
+
+        $diagnosis = $client->diagnostics->getRequest('req_1');
+        $trace = $client->diagnostics->tracePaymentIntent('pi_1');
+        $customer = $client->customers->retrieve('cus_1');
+
+        self::assertSame(201, $diagnosis['request']['status']);
+        self::assertSame('/v1/diagnostics/payment-intents/pi_1/trace', $history[1]['request']->getUri()->getPath());
+        self::assertSame('pi_1', $trace['payment_intent_id']);
+        self::assertSame('ZIZE00001', $customer->code);
     }
 }

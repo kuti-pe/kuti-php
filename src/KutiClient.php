@@ -13,11 +13,14 @@ use Kuti\Exception\KutiApiException;
 use Kuti\Exception\KutiConnectionException;
 use Kuti\Resource\CheckoutSessions;
 use Kuti\Resource\Customers;
+use Kuti\Resource\Diagnostics;
+use Kuti\Resource\PaymentExceptions;
 use Kuti\Resource\PaymentIntents;
 use Kuti\Resource\PaymentLinks;
+use Kuti\Resource\WebhookDeliveries;
 
 /**
- * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents, paymentLinks);
+ * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents, paymentLinks, paymentExceptions, webhookDeliveries, diagnostics);
  * esta clase solo resuelve auth, reintentos y mapeo de errores — cada recurso solo arma su propio
  * path/body.
  */
@@ -36,6 +39,9 @@ final class KutiClient
     public readonly Customers $customers;
     public readonly PaymentIntents $paymentIntents;
     public readonly PaymentLinks $paymentLinks;
+    public readonly PaymentExceptions $paymentExceptions;
+    public readonly WebhookDeliveries $webhookDeliveries;
+    public readonly Diagnostics $diagnostics;
 
     public function __construct(string $secretKey, ?string $baseUrl = null, ?ClientInterface $httpClient = null)
     {
@@ -60,6 +66,9 @@ final class KutiClient
         $this->customers = new Customers($this);
         $this->paymentIntents = new PaymentIntents($this);
         $this->paymentLinks = new PaymentLinks($this);
+        $this->paymentExceptions = new PaymentExceptions($this);
+        $this->webhookDeliveries = new WebhookDeliveries($this);
+        $this->diagnostics = new Diagnostics($this);
     }
 
     /**
@@ -112,6 +121,7 @@ final class KutiClient
                     $errorBody['request_id'] ?? null,
                     $errorBody['doc_url'] ?? null,
                     $errorBody['details'] ?? [],
+                    $errorBody['correlation_id'] ?? null,
                 );
 
                 if ($canRetry && in_array($status, self::RETRYABLE_STATUS, true) && $attempt < self::MAX_RETRIES) {

@@ -27,6 +27,8 @@ final class Customer
         public readonly array $customFields = [],
         /** Only in Customers::retrieve. */
         public readonly ?int $paymentIntentsCount = null,
+        /** Código de pago del cliente (prefijo del negocio + número, ej. ZIZE00001). Lo asigna KUTI. */
+        public readonly ?string $code = null,
     ) {
     }
 
@@ -48,6 +50,7 @@ final class Customer
             metadata: $data['metadata'] ?? null,
             customFields: $data['custom_fields'] ?? [],
             paymentIntentsCount: $data['payment_intents_count'] ?? null,
+            code: $data['code'] ?? null,
         );
     }
 }

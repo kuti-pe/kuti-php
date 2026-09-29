@@ -21,6 +21,8 @@ class KutiApiException extends RuntimeException
         private readonly ?string $docUrl = null,
         private readonly array $details = [],
         ?Throwable $previous = null,
+        /** El X-Request-Id que enviaste (o el mismo requestId si no enviaste uno). */
+        private readonly ?string $correlationId = null,
     ) {
         parent::__construct($message, 0, $previous);
     }
@@ -38,6 +40,11 @@ class KutiApiException extends RuntimeException
     public function getRequestId(): ?string
     {
         return $this->requestId;
+    }
+
+    public function getCorrelationId(): ?string
+    {
+        return $this->correlationId;
     }
 
     public function getDocUrl(): ?string
@@ -58,6 +65,7 @@ class KutiApiException extends RuntimeException
         ?string $requestId,
         ?string $docUrl,
         array $details,
+        ?string $correlationId = null,
     ): self {
         $class = match ($status) {
             401 => KutiAuthenticationException::class,
@@ -68,6 +76,6 @@ class KutiApiException extends RuntimeException
             429 => KutiRateLimitException::class,
             default => self::class,
         };
-        return new $class($message, $status, $kutiCode, $requestId, $docUrl, $details);
+        return new $class($message, $status, $kutiCode, $requestId, $docUrl, $details, null, $correlationId);
     }
 }
