@@ -41,6 +41,20 @@ final class PaymentIntent
          * @var list<string>|null
          */
         public readonly ?array $sendVia = null,
+        /**
+         * Si el checkout de este cobro puede mostrar el medio guardado del cliente sin pedirle un
+         * código: ['status' => 'enabled'|'disabled', 'expiresAt' => ?string].
+         *
+         * @var array{status: string, expiresAt: ?string}|null
+         */
+        public readonly ?array $savedPaymentMethods = null,
+        /**
+         * Solo al crear con confirm: true — cómo salió el débito:
+         * ['status' => PROCESSING|SUCCEEDED|FAILED, 'failureCode' => ?string].
+         *
+         * @var array{status: string, failureCode: ?string}|null
+         */
+        public readonly ?array $lastSavedMethodPayment = null,
     ) {
     }
 
@@ -87,6 +101,17 @@ final class PaymentIntent
             customer: isset($data['customer']) && is_array($data['customer']) ? $data['customer'] : null,
             paymentLinkId: $data['payment_link_id'] ?? null,
             sendVia: $data['send_via'] ?? null,
+            savedPaymentMethods: isset($data['saved_payment_methods']) && is_array($data['saved_payment_methods'])
+                ? [
+                    'status' => $data['saved_payment_methods']['status'] ?? 'disabled',
+                    'expiresAt' => $data['saved_payment_methods']['expires_at'] ?? null,
+                ] : null,
+            lastSavedMethodPayment: isset($data['last_saved_method_payment'])
+                && is_array($data['last_saved_method_payment'])
+                ? [
+                    'status' => $data['last_saved_method_payment']['status'],
+                    'failureCode' => $data['last_saved_method_payment']['failure_code'] ?? null,
+                ] : null,
         );
     }
 

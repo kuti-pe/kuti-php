@@ -475,4 +475,98 @@ final class KutiClientTest extends TestCase
         self::assertSame('pi_1', $trace['payment_intent_id']);
         self::assertSame('ZIZE00001', $customer->code);
     }
+
+    public function testSubscriptionsCreateChargeAndMapTheLatestCycle(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(201, ['data' => [
+                'id' => 'sub_1', 'merchant_id' => 'mer_1', 'description' => 'Plan Pro', 'billing_mode' => 'fixed',
+                'amount' => ['amount' => '99.00', 'currency' => 'PEN'],
+                'items' => [['description' => 'Plan Pro', 'unit_amount' => '99.00', 'quantity' => 1, 'amount' => '99.00']],
+                'frequency' => 'MONTHLY', 'interval' => 1, 'start_date' => '2026-10-05', 'charge_time' => '09:00',
+                'status' => 'INCOMPLETE',
+                'retry_policy' => ['interval_days' => [1, 3, 5], 'on_exhausted' => 'past_due'],
+                'latest_cycle' => [
+                    'id' => 'subc_1', 'billing_period' => '2026-10', 'due_date' => '2026-10-05',
+                    'amount' => ['amount' => '99.00', 'currency' => 'PEN'], 'status' => 'OPEN', 'attempts' => 0,
+                    'last_failure_code' => 'payment_method_required', 'payment_intent_id' => 'pi_1',
+                    'checkout_url' => 'https://pay.kuti.pe/c/ABC',
+                ],
+                'created_at' => '2026-10-05T14:00:00Z',
+            ]]),
+            self::jsonResponse(200, ['data' => [
+                'id' => 'sub_2', 'merchant_id' => 'mer_1', 'description' => 'LIA por consumo',
+                'billing_mode' => 'variable', 'frequency' => 'MONTHLY', 'interval' => 1,
+                'start_date' => '2026-09-05', 'status' => 'ACTIVE', 'created_at' => '2026-09-05T14:00:00Z',
+            ]]),
+        ], $history);
+
+        $sub = $client->subscriptions->create([
+            'customer' => new CustomerInput(id: 'cus_1'),
+            'description' => 'Plan Pro',
+            'amount' => '99.00',
+            'frequency' => 'MONTHLY',
+            'chargeTime' => '09:00',
+            'retryPolicy' => ['intervalDays' => [], 'onExhausted' => 'cancel'],
+        ], 'alta-1');
+        $charged = $client->subscriptions->charge('sub_2', '184.00', period: '2026-10');
+
+        $body = json_decode((string) $history[0]['request']->getBody(), true);
+        self::assertSame('/v1/subscriptions', $history[0]['request']->getUri()->getPath());
+        self::assertSame('alta-1', $history[0]['request']->getHeaderLine('Idempotency-Key'));
+        self::assertSame('cus_1', $body['customer']['id']);
+        self::assertSame('09:00', $body['charge_time']);
+        self::assertSame(['interval_days' => [], 'on_exhausted' => 'cancel'], $body['retry_policy']);
+        self::assertSame('INCOMPLETE', $sub->status);
+        self::assertSame('99.00', $sub->amount?->amount);
+        self::assertSame([1, 3, 5], $sub->retryPolicy['intervalDays']);
+        self::assertSame('payment_method_required', $sub->latestCycle['lastFailureCode']);
+        self::assertSame('https://pay.kuti.pe/c/ABC', $sub->latestCycle['checkoutUrl']);
+
+        self::assertSame('/v1/subscriptions/sub_2/charges', $history[1]['request']->getUri()->getPath());
+        self::assertSame(
+            ['amount' => '184.00', 'period' => '2026-10'],
+            json_decode((string) $history[1]['request']->getBody(), true),
+        );
+        self::assertSame('variable', $charged->billingMode);
+        self::assertNull($charged->amount);
+    }
+
+    public function testSavedPaymentMethodsAndDirectCharge(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(200, ['data' => [
+                ['id' => 'pm_1', 'type' => 'YAPE', 'status' => 'ACTIVE', 'display' => ['phone_last4' => '2011']],
+            ]]),
+            self::jsonResponse(201, ['data' => [
+                'id' => 'pi_1', 'merchant_id' => 'mer_1', 'amount' => ['amount' => '80.00', 'currency' => 'PEN'],
+                'status' => 'PENDING', 'saved_payment_methods' => ['status' => 'disabled'],
+                'last_saved_method_payment' => ['status' => 'FAILED', 'failure_code' => 'insufficient_funds'],
+                'created_at' => '2026-10-05T14:00:00Z',
+            ]]),
+            self::jsonResponse(201, ['data' => ['customer_session_secret' => 'cuss_secret_x', 'expires_at' => '2026-10-05T14:30:00Z']]),
+        ], $history);
+
+        $methods = $client->customers->listPaymentMethods('cus_1');
+        $pi = $client->paymentIntents->create(
+            amount: new Money('80.00', 'PEN'),
+            paymentMethodTypes: [PaymentMethodType::Yape],
+            customer: new CustomerInput(id: 'cus_1'),
+            paymentMethod: $methods[0]['id'],
+            confirm: true,
+        );
+        $session = $client->paymentIntents->createCustomerSession('pi_1');
+
+        self::assertSame('/v1/customers/cus_1/payment-methods', $history[0]['request']->getUri()->getPath());
+        self::assertSame('2011', $methods[0]['phoneLast4']);
+        $body = json_decode((string) $history[1]['request']->getBody(), true);
+        self::assertSame(['YAPE'], $body['payment_method_types']);
+        self::assertSame('pm_1', $body['payment_method']);
+        self::assertTrue($body['confirm']);
+        self::assertSame('insufficient_funds', $pi->lastSavedMethodPayment['failureCode']);
+        self::assertSame('/v1/payment-intents/pi_1/customer-session', $history[2]['request']->getUri()->getPath());
+        self::assertSame('cuss_secret_x', $session['customerSessionSecret']);
+    }
 }

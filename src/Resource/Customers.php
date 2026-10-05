@@ -104,6 +104,51 @@ final class Customers
     }
 
     /**
+     * GET /customers/{id}/payment-methods — medios guardados del cliente (su Yape afiliado), sin
+     * los ya desvinculados. status: ACTIVE | REVOKED (lo quitó en su app).
+     *
+     * @return list<array{id: string, type: string, status: string, phoneLast4: ?string, lastUsedAt: ?string, createdAt: ?string}>
+     */
+    public function listPaymentMethods(string $id): array
+    {
+        $response = $this->client->request('GET', '/customers/' . rawurlencode($id) . '/payment-methods');
+
+        return array_map(self::paymentMethodFromArray(...), $response['data'] ?? []);
+    }
+
+    /**
+     * DELETE /customers/{id}/payment-methods/{paymentMethodId} — desvincula el medio: ya no se le
+     * puede cobrar hasta que lo afilie de nuevo.
+     *
+     * @return array{id: string, type: string, status: string, phoneLast4: ?string, lastUsedAt: ?string, createdAt: ?string}
+     */
+    public function detachPaymentMethod(string $id, string $paymentMethodId): array
+    {
+        $response = $this->client->request(
+            'DELETE',
+            '/customers/' . rawurlencode($id) . '/payment-methods/' . rawurlencode($paymentMethodId),
+        );
+
+        return self::paymentMethodFromArray($response['data']);
+    }
+
+    /**
+     * @param array<string, mixed> $pm
+     * @return array{id: string, type: string, status: string, phoneLast4: ?string, lastUsedAt: ?string, createdAt: ?string}
+     */
+    private static function paymentMethodFromArray(array $pm): array
+    {
+        return [
+            'id' => (string) $pm['id'],
+            'type' => (string) ($pm['type'] ?? 'YAPE'),
+            'status' => (string) ($pm['status'] ?? 'ACTIVE'),
+            'phoneLast4' => $pm['display']['phone_last4'] ?? null,
+            'lastUsedAt' => $pm['last_used_at'] ?? null,
+            'createdAt' => $pm['created_at'] ?? null,
+        ];
+    }
+
+    /**
      * DELETE /customers/{id} — archived instead of deleted if it has payment intents.
      *
      * @return array{deleted: bool, archived: bool, paymentIntentsCount: int}

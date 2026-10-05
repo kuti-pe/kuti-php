@@ -17,10 +17,11 @@ use Kuti\Resource\Diagnostics;
 use Kuti\Resource\PaymentExceptions;
 use Kuti\Resource\PaymentIntents;
 use Kuti\Resource\PaymentLinks;
+use Kuti\Resource\Subscriptions;
 use Kuti\Resource\WebhookDeliveries;
 
 /**
- * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents, paymentLinks, paymentExceptions, webhookDeliveries, diagnostics);
+ * Cliente HTTP central de KUTI. Cuelgan de aquí los recursos (checkoutSessions, customers, paymentIntents, paymentLinks, subscriptions, paymentExceptions, webhookDeliveries, diagnostics);
  * esta clase solo resuelve auth, reintentos y mapeo de errores — cada recurso solo arma su propio
  * path/body.
  */
@@ -39,6 +40,7 @@ final class KutiClient
     public readonly Customers $customers;
     public readonly PaymentIntents $paymentIntents;
     public readonly PaymentLinks $paymentLinks;
+    public readonly Subscriptions $subscriptions;
     public readonly PaymentExceptions $paymentExceptions;
     public readonly WebhookDeliveries $webhookDeliveries;
     public readonly Diagnostics $diagnostics;
@@ -66,6 +68,7 @@ final class KutiClient
         $this->customers = new Customers($this);
         $this->paymentIntents = new PaymentIntents($this);
         $this->paymentLinks = new PaymentLinks($this);
+        $this->subscriptions = new Subscriptions($this);
         $this->paymentExceptions = new PaymentExceptions($this);
         $this->webhookDeliveries = new WebhookDeliveries($this);
         $this->diagnostics = new Diagnostics($this);

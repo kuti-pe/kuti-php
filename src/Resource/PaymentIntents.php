@@ -23,6 +23,11 @@ final class PaymentIntents
      * @param array<string, string>|null $metadata
      * @param list<string>|null $sendVia Por dónde se envía el cobro: 'EMAIL', 'WHATSAPP'. null = ['EMAIL'];
      *     [] = no enviar. WHATSAPP necesita teléfono del cliente (usa 1 moneda).
+     * @param string|null $savedPaymentMethods 'enabled' = le envías este enlace a tu cliente: por 30
+     *     minutos el checkout le muestra su Yape guardado. Requiere cliente y PaymentMethodType::Yape.
+     * @param string|null $paymentMethod Medio guardado a debitar (pm_…). Va junto con $confirm.
+     * @param bool|null $confirm true = crea el cobro y lo debita ya, sin el cliente presente. El
+     *     resultado viene en lastSavedMethodPayment; si se deniega, el cobro queda abierto.
      */
     public function create(
         Money $amount,
@@ -38,6 +43,9 @@ final class PaymentIntents
         ?array $metadata = null,
         ?string $idempotencyKey = null,
         ?array $sendVia = null,
+        ?string $savedPaymentMethods = null,
+        ?string $paymentMethod = null,
+        ?bool $confirm = null,
     ): PaymentIntent {
         $body = array_filter(
             [
@@ -55,6 +63,9 @@ final class PaymentIntents
                 'expires_at' => $expiresAt,
                 'merchant_id' => $merchantId,
                 'metadata' => $metadata,
+                'saved_payment_methods' => $savedPaymentMethods,
+                'payment_method' => $paymentMethod,
+                'confirm' => $confirm,
             ],
             static fn (mixed $v): bool => $v !== null && $v !== [],
         );
@@ -152,6 +163,41 @@ final class PaymentIntents
         $response = $this->client->request('POST', '/payment-intents/' . rawurlencode($id) . '/cancel');
 
         return PaymentIntent::fromArray($response['data']);
+    }
+
+    /**
+     * POST /payment-intents/:id/saved-payment-methods/enable — por 30 minutos el checkout de este
+     * cobro muestra el Yape guardado del cliente sin pedirle un código. Llámalo justo antes de
+     * enviarle el enlace; volver a llamarlo renueva el plazo.
+     */
+    public function enableSavedPaymentMethods(string $id): PaymentIntent
+    {
+        $response = $this->client->request(
+            'POST',
+            '/payment-intents/' . rawurlencode($id) . '/saved-payment-methods/enable',
+        );
+
+        return PaymentIntent::fromArray($response['data']);
+    }
+
+    /**
+     * POST /payment-intents/:id/customer-session — llave para el checkout que incrustas con
+     * KUTI.js: muestra el Yape guardado del cliente que ya inició sesión en tu tienda. No va en el
+     * enlace del cobro; vale 30 minutos y solo para ese cobro.
+     *
+     * @return array{customerSessionSecret: string, expiresAt: ?string}
+     */
+    public function createCustomerSession(string $id): array
+    {
+        $response = $this->client->request(
+            'POST',
+            '/payment-intents/' . rawurlencode($id) . '/customer-session',
+        );
+
+        return [
+            'customerSessionSecret' => (string) $response['data']['customer_session_secret'],
+            'expiresAt' => $response['data']['expires_at'] ?? null,
+        ];
     }
 
     /** POST /payment-intents/:id/send-whatsapp — 204 on success. */

@@ -10,4 +10,6 @@ enum PaymentMethodType: string
     case InteroperableQr = 'INTEROPERABLE_QR';
     /** Pago de servicios / transferencia bancaria (BCP, BBVA, Interbank, ...). */
     case BankTransfer = 'BANK_TRANSFER';
+    /** Yape afiliado — el cliente aprueba una vez, su Yape queda guardado y se le debita. */
+    case Yape = 'YAPE';
 }
