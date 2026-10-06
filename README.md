@@ -176,8 +176,8 @@ $kuti->paymentIntents->create(
 
 ## Yape afiliado y suscripciones
 
-> Por ahora solo en **modo prueba** (claves `kuti_test_…`). En producción estará disponible
-> cuando Yape afiliado quede habilitado para tu negocio.
+> Disponible en producción próximamente. Ya puedes integrarlo y probarlo con una clave de prueba
+> (`kuti_test_…`).
 
 Con `PaymentMethodType::Yape`, tu cliente aprueba una sola vez desde su app y su Yape queda afiliado
 a tu negocio. Desde ahí puedes cobrarle sin que vuelva a aprobar.
@@ -223,7 +223,7 @@ $sub = $kuti->subscriptions->create([
     'chargeTime' => '09:00', // hora de Perú; nunca entre 01:00 y 03:00
     'retryPolicy' => ['intervalDays' => [1, 3, 5], 'onExhausted' => 'past_due'], // opcional
     'metadata' => ['workspace_id' => 'ws_4821'],
-]);
+], "sub-plan-{$customerId}");
 
 if ($sub->status === 'INCOMPLETE') {
     // El cliente aún no tiene su Yape afiliado: debe afiliarlo y pagar el primer periodo aquí.
@@ -270,7 +270,7 @@ intento y cuándo se reintenta. KUTI no corta tu servicio: tú decides qué hace
 - `$kuti->paymentIntents->sendWhatsApp(...)`
 - `$kuti->paymentIntents->enableSavedPaymentMethods($id)` / `createCustomerSession($id)` — mostrar el Yape guardado en el checkout
 - `$kuti->customers->listPaymentMethods($id)` / `detachPaymentMethod($id, $paymentMethodId)` — Yape afiliado del cliente
-- `$kuti->subscriptions->create(array $params, ?string $idempotencyKey)` / `retrieve($id)` / `list(array $params)` / `update($id, array $params)` / `pause($id)` / `resume($id)` / `cancel($id)` / `retry($id)` / `charge($id, $amount, $description, $period, $idempotencyKey)` / `listCycles($id)`
+- `$kuti->subscriptions->create(array $params, ?string $idempotencyKey)` / `retrieve($id)` / `list(array $params)` / `update($id, array $params)` / `pause($id, ?string $idempotencyKey)` / `resume($id, ?string $idempotencyKey)` / `cancel($id, ?string $idempotencyKey)` / `retry($id, ?string $idempotencyKey)` / `charge($id, $amount, $description, $period, $idempotencyKey)` / `listCycles($id)`
 - `$kuti->paymentLinks->create(array $params)` / `retrieve($id)` / `update($id, array $params)` / `list(array $params)` / `activate($id)` / `deactivate($id)` / `checkSlug($slug, $exceptId)`
 - `$kuti->paymentExceptions->list(array $params)` / `resolve($id, $status, $note)` — pagos para revisar
 - `$kuti->webhookDeliveries->retrieve($id)` / `retry($id)` — cada intento con el status HTTP y lo que respondió tu servidor

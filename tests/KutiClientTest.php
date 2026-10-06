@@ -500,6 +500,11 @@ final class KutiClientTest extends TestCase
                 'billing_mode' => 'variable', 'frequency' => 'MONTHLY', 'interval' => 1,
                 'start_date' => '2026-09-05', 'status' => 'ACTIVE', 'created_at' => '2026-09-05T14:00:00Z',
             ]]),
+            self::jsonResponse(200, ['data' => [
+                'id' => 'sub_2', 'merchant_id' => 'mer_1', 'description' => 'LIA por consumo',
+                'billing_mode' => 'variable', 'frequency' => 'MONTHLY', 'interval' => 1,
+                'start_date' => '2026-09-05', 'status' => 'ACTIVE', 'created_at' => '2026-09-05T14:00:00Z',
+            ]]),
         ], $history);
 
         $sub = $client->subscriptions->create([
@@ -531,6 +536,10 @@ final class KutiClientTest extends TestCase
         );
         self::assertSame('variable', $charged->billingMode);
         self::assertNull($charged->amount);
+
+        $client->subscriptions->retry('sub_2', 'retry-1');
+        self::assertSame('/v1/subscriptions/sub_2/retry', $history[2]['request']->getUri()->getPath());
+        self::assertSame('retry-1', $history[2]['request']->getHeaderLine('Idempotency-Key'));
     }
 
     public function testSavedPaymentMethodsAndDirectCharge(): void

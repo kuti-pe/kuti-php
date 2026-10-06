@@ -108,27 +108,27 @@ final class Subscriptions
     }
 
     /** POST /subscriptions/{id}/pause — deja de cobrar y de reintentar. */
-    public function pause(string $id): Subscription
+    public function pause(string $id, ?string $idempotencyKey = null): Subscription
     {
-        return $this->action($id, 'pause');
+        return $this->action($id, 'pause', $idempotencyKey);
     }
 
     /** POST /subscriptions/{id}/resume */
-    public function resume(string $id): Subscription
+    public function resume(string $id, ?string $idempotencyKey = null): Subscription
     {
-        return $this->action($id, 'resume');
+        return $this->action($id, 'resume', $idempotencyKey);
     }
 
     /** POST /subscriptions/{id}/cancel — final; anula el cobro del periodo que siga sin pagar. */
-    public function cancel(string $id): Subscription
+    public function cancel(string $id, ?string $idempotencyKey = null): Subscription
     {
-        return $this->action($id, 'cancel');
+        return $this->action($id, 'cancel', $idempotencyKey);
     }
 
     /** POST /subscriptions/{id}/retry — debita ahora el periodo más antiguo sin pagar. */
-    public function retry(string $id): Subscription
+    public function retry(string $id, ?string $idempotencyKey = null): Subscription
     {
-        return $this->action($id, 'retry');
+        return $this->action($id, 'retry', $idempotencyKey);
     }
 
     /**
@@ -167,9 +167,9 @@ final class Subscriptions
         );
     }
 
-    private function action(string $id, string $action): Subscription
+    private function action(string $id, string $action, ?string $idempotencyKey = null): Subscription
     {
-        $response = $this->client->request('POST', self::path($id) . '/' . $action);
+        $response = $this->client->request('POST', self::path($id) . '/' . $action, null, $idempotencyKey);
 
         return Subscription::fromArray($response['data']);
     }
