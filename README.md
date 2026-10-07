@@ -130,6 +130,17 @@ try {
 
 Los `GET` y los `create()` con `idempotencyKey` se reintentan automáticamente en errores de red o `429`/`503`. Un `create()` sin `idempotencyKey` nunca se reintenta, para no duplicar un cobro.
 
+Aceptan `idempotencyKey` como último argumento: `paymentIntents->create`, `paymentIntents->sendWhatsApp`, `checkoutSessions->create`, `customers->create`, `paymentLinks->create`, `webhookDeliveries->retry` y `subscriptions->create | charge | retry | pause | resume | cancel`. Con la misma llave y el mismo contenido recibes la respuesta original y nada se hace dos veces; la misma llave con otro contenido responde `409 IDEMPOTENCY_CONFLICT`.
+
+```php
+// Un reintento no crea otro cliente ni le manda el mensaje dos veces.
+$customer = $kuti->customers->create(
+    new CustomerInput(type: 'INDIVIDUAL', firstName: 'Ana', lastName: 'Rojas'),
+    idempotencyKey: "alta-{$userId}",
+);
+$kuti->paymentIntents->sendWhatsApp($pi->id, idempotencyKey: "wa-{$pi->id}");
+```
+
 ## Cliente HTTP
 
 Por defecto se usa Guzzle. Si ya tienes tu propio cliente configurado (proxy, logging, etc.), puedes inyectarlo — solo debe implementar `GuzzleHttp\ClientInterface`:

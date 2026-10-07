@@ -44,13 +44,13 @@ final class PaymentLinks
 
     /**
      * POST /payment-links. customerFieldIds sin enviar = los "pedir también al pagar";
-     * [] = solo nombre, apellido y correo.
+     * [] = solo nombre, apellido y correo. Con $idempotencyKey, reintentar devuelve el link ya creado.
      *
      * @param array<string, mixed> $params
      */
-    public function create(array $params): PaymentLink
+    public function create(array $params, ?string $idempotencyKey = null): PaymentLink
     {
-        $response = $this->client->request('POST', '/payment-links', self::toBody($params));
+        $response = $this->client->request('POST', '/payment-links', self::toBody($params), $idempotencyKey);
 
         return PaymentLink::fromArray($response['data']);
     }

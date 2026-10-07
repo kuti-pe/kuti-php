@@ -578,4 +578,58 @@ final class KutiClientTest extends TestCase
         self::assertSame('/v1/payment-intents/pi_1/customer-session', $history[2]['request']->getUri()->getPath());
         self::assertSame('cuss_secret_x', $session['customerSessionSecret']);
     }
+
+    public function testSendsIdempotencyKeyOnCustomersPaymentLinksWhatsAppAndDeliveryRetry(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(201, ['data' => [
+                'id' => 'cus_1', 'merchant_id' => 'mer_1', 'type' => 'INDIVIDUAL', 'first_name' => 'Ana',
+                'created_at' => '2026-01-01T00:00:00Z',
+            ]]),
+            self::jsonResponse(201, ['data' => [
+                'id' => 'plink_1', 'merchant_id' => 'mer_1', 'livemode' => false, 'slug' => 'taller-excel',
+                'url' => 'https://pay.kuti.pe/l/taller-excel', 'title' => 'Taller de Excel', 'template' => 'COURSE',
+                'pricing' => 'FIXED', 'currency' => 'PEN', 'amount' => '120.00',
+                'payment_method_types' => ['INTEROPERABLE_QR'], 'status' => 'ACTIVE',
+                'created_at' => '2026-01-01T00:00:00Z', 'updated_at' => '2026-01-01T00:00:00Z',
+            ]]),
+            new Response(204),
+            self::jsonResponse(200, ['data' => ['id' => 'whd_1', 'event_id' => 'evt_1', 'status' => 'PENDING']]),
+        ], $history);
+
+        $client->customers->create(new CustomerInput(type: 'INDIVIDUAL', firstName: 'Ana'), null, 'alta-ana');
+        $client->paymentLinks->create(
+            ['title' => 'Taller de Excel', 'pricing' => 'FIXED', 'amount' => '120.00', 'paymentMethodTypes' => ['INTEROPERABLE_QR']],
+            'link-taller',
+        );
+        $client->paymentIntents->sendWhatsApp('pi_1', '+51987654321', null, 'wa-pi_1');
+        $client->webhookDeliveries->retry('whd_1', 'retry-whd_1');
+
+        $sent = array_map(
+            static fn (array $h): array => [$h['request']->getUri()->getPath(), $h['request']->getHeaderLine('Idempotency-Key')],
+            $history,
+        );
+        self::assertSame([
+            ['/v1/customers', 'alta-ana'],
+            ['/v1/payment-links', 'link-taller'],
+            ['/v1/payment-intents/pi_1/send-whatsapp', 'wa-pi_1'],
+            ['/v1/webhook-deliveries/whd_1/retry', 'retry-whd_1'],
+        ], $sent);
+    }
+
+    public function testSendsNoIdempotencyKeyWhenTheCallerDoesNotGiveOne(): void
+    {
+        $history = [];
+        $client = $this->makeClient([
+            self::jsonResponse(201, ['data' => [
+                'id' => 'cus_1', 'merchant_id' => 'mer_1', 'type' => 'INDIVIDUAL', 'first_name' => 'Ana',
+                'created_at' => '2026-01-01T00:00:00Z',
+            ]]),
+        ], $history);
+
+        $client->customers->create(new CustomerInput(type: 'INDIVIDUAL', firstName: 'Ana'));
+
+        self::assertFalse($history[0]['request']->hasHeader('Idempotency-Key'));
+    }
 }

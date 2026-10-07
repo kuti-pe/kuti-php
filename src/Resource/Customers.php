@@ -16,17 +16,18 @@ final class Customers
 
     /**
      * POST /customers — 409 CUSTOMER_ALREADY_EXISTS if the externalId or document already exists.
+     * Con $idempotencyKey, reintentar no crea otro cliente.
      *
      * @param array<string, string>|null $metadata
      */
-    public function create(CustomerInput $customer, ?array $metadata = null): Customer
+    public function create(CustomerInput $customer, ?array $metadata = null, ?string $idempotencyKey = null): Customer
     {
         $body = $customer->toArray();
         unset($body['id']);
         if ($metadata !== null) {
             $body['metadata'] = $metadata;
         }
-        $response = $this->client->request('POST', '/customers', $body);
+        $response = $this->client->request('POST', '/customers', $body, $idempotencyKey);
 
         return Customer::fromArray($response['data']);
     }

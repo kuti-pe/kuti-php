@@ -200,8 +200,16 @@ final class PaymentIntents
         ];
     }
 
-    /** POST /payment-intents/:id/send-whatsapp — 204 on success. */
-    public function sendWhatsApp(string $id, ?string $phone = null, ?string $customerName = null): void
+    /**
+     * POST /payment-intents/:id/send-whatsapp — 204 on success. Con $idempotencyKey, reintentar no
+     * le manda el mensaje dos veces al cliente.
+     */
+    public function sendWhatsApp(
+        string $id,
+        ?string $phone = null,
+        ?string $customerName = null,
+        ?string $idempotencyKey = null,
+    ): void
     {
         $body = array_filter(
             [
@@ -214,6 +222,7 @@ final class PaymentIntents
             'POST',
             '/payment-intents/' . rawurlencode($id) . '/send-whatsapp',
             $body === [] ? new \stdClass() : $body,
+            $idempotencyKey,
         );
     }
 }

@@ -31,8 +31,13 @@ final class WebhookDeliveries
      *
      * @return array<string, mixed>
      */
-    public function retry(string $id): array
+    public function retry(string $id, ?string $idempotencyKey = null): array
     {
-        return $this->client->request('POST', '/webhook-deliveries/' . rawurlencode($id) . '/retry')['data'];
+        return $this->client->request(
+            'POST',
+            '/webhook-deliveries/' . rawurlencode($id) . '/retry',
+            null,
+            $idempotencyKey,
+        )['data'];
     }
 }
